@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Samuel El Naby — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg1:#1a0f3a; --bg2:#2d1b6b; --bg3:#4a2ab0;
+  --panel:#211455; --panel2:#2f1f75;
+  --gold:#ffcc33; --gold2:#ff9a1f; --gold3:#a85f00;
+  --blue:#3aa0ff; --blue2:#1b6be0;
+  --green:#5bd35b; --green2:#2f9f2f;
+  --red:#ff5a5a; --red2:#c62828;
+  --text:#fff; --muted:#b7a9e6; --border:#0f0828;
+  --shadow:0 6px 0 var(--border),0 12px 20px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'Nunito',sans-serif;color:var(--text);background:radial-gradient(1200px 600px at 50% -10%,var(--bg3),var(--bg1) 60%);background-attachment:fixed;overflow:hidden}
+h1,h2,h3{font-family:'Lilita One',cursive;letter-spacing:.5px;text-shadow:0 3px 0 rgba(0,0,0,.35)}
+button{font-family:inherit;cursor:pointer;border:none;color:inherit}
+#app{height:100%;display:flex;flex-direction:column}
+header{padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:20px;color:var(--gold)}
+header h1 small{font-family:'Nunito';font-size:11px;color:var(--muted);letter-spacing:2px;display:block;text-shadow:none}
+main{flex:1;overflow:hidden;position:relative}
+.page{position:absolute;inset:0;overflow-y:auto;padding:6px 14px calc(100px + env(safe-area-inset-bottom));opacity:0;transform:translateX(30px);pointer-events:none;transition:.3s}
+.page.active{opacity:1;transform:none;pointer-events:auto}
+.page h2{font-size:26px;margin:8px 0 14px}.page h2 span{color:var(--gold)}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:8px 6px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#160b33,#0d0620);border-top:3px solid #3c2a80;display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
+nav button{background:transparent;border-radius:12px;padding:6px 0;min-width:0;overflow:hidden;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:900;font-size:8.5px;color:var(--muted);transition:.2s}
+nav button .ic{font-size:20px;transition:transform .3s cubic-bezier(.2,1.6,.4,1);filter:grayscale(.6)}
+nav button.on{color:var(--gold);background:linear-gradient(180deg,#3d2a8a,#2a1c66);box-shadow:0 3px 0 var(--border)}
+nav button.on .ic{transform:translateY(-4px) scale(1.2);filter:none}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border-radius:18px;padding:14px;box-shadow:var(--shadow);border:2px solid #4b36a3;position:relative;margin-bottom:12px;animation:pop .35s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 18px;border-radius:14px;font-family:'Lilita One';font-size:17px;text-shadow:0 2px 0 rgba(0,0,0,.3);background:linear-gradient(180deg,var(--blue),var(--blue2));box-shadow:0 5px 0 #0d3f8f,0 8px 12px rgba(0,0,0,.35);transition:.1s;user-select:none}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #0d3f8f}
+.btn.gold{background:linear-gradient(180deg,var(--gold),var(--gold2));box-shadow:0 5px 0 var(--gold3),0 8px 12px rgba(0,0,0,.35);color:#4a2a00;text-shadow:0 1px 0 rgba(255,255,255,.4)}
+.btn.green{background:linear-gradient(180deg,var(--green),var(--green2));box-shadow:0 5px 0 #1b6b1b}
+.btn.red{background:linear-gradient(180deg,var(--red),var(--red2));box-shadow:0 5px 0 #7a1010}
+.btn.gray{background:linear-gradient(180deg,#6b7a99,#46526e);box-shadow:0 5px 0 #262d3f}
+.btn.sm{padding:7px 12px;font-size:14px}.btn.wide{width:100%}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.inp,textarea.inp,select.inp{width:100%;padding:12px;border-radius:12px;border:2px solid #4b36a3;background:#150b3a;color:#fff;font-family:'Nunito';font-weight:800;font-size:15px;outline:none;margin-bottom:10px}
+.inp:focus{border-color:var(--gold)}
+textarea.inp{min-height:90px;resize:vertical}
+label.lbl{display:block;font-size:11px;font-weight:900;color:var(--muted);letter-spacing:1px;margin:4px 0 4px}
+.row{display:flex;gap:8px;align-items:center}.row .inp{margin-bottom:0}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-weight:900;font-size:12px;background:rgba(0,0,0,.3)}
+.pill.gold{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#4a2a00}
+.pill.green{background:var(--green2)}.pill.red{background:var(--red2)}
+.muted{color:var(--muted);font-weight:800;font-size:13px}
+.item{display:flex;align-items:center;gap:10px}.item .grow{flex:1;min-width:0}
+.item h3{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item p{font-size:12px;color:var(--muted);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.av{width:44px;height:44px;border-radius:12px;overflow:hidden;background:#3a2a8a;border:2px solid var(--gold);display:grid;place-items:center;font-family:'Lilita One';font-size:20px;flex-shrink:0;position:relative}
+.av img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+/* SCORE */
+.scoregrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
+.sbtn{aspect-ratio:1;border-radius:16px;font-family:'Lilita One';font-size:24px;text-shadow:0 2px 0 rgba(0,0,0,.3);transition:.15s;box-shadow:0 5px 0 var(--sh);background:linear-gradient(180deg,var(--a),var(--b))}
+.sbtn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--sh)}
+.sbtn.plus{--a:#5bd35b;--b:#2f9f2f;--sh:#1b6b1b}.sbtn.minus{--a:#ff5a5a;--b:#c62828;--sh:#7a1010}
+.sbtn.sel{outline:4px solid var(--gold);outline-offset:2px;transform:scale(1.08)}
+#reader{width:100%;border-radius:16px;overflow:hidden;background:#000;min-height:240px;display:none}
+#reader.on{display:block}
+.selected-op{font-family:'Lilita One';font-size:40px;text-align:center;margin:6px 0}
+.selected-op.plus{color:var(--green)}.selected-op.minus{color:var(--red)}
+.log{font-size:13px;font-weight:800;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.3);margin-top:6px;border-left:4px solid var(--gold)}
+/* QUESTION BUILDER */
+.qb{background:rgba(0,0,0,.25);border-radius:14px;padding:10px;margin-bottom:10px;border:2px dashed #5a46b8}
+.qb .opts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.qb .opt{display:flex;align-items:center;gap:6px}
+.qb .opt input[type=radio]{width:20px;height:20px;accent-color:var(--gold);flex-shrink:0}
+.qb .opt .inp{margin:0;padding:8px}
+.badgepick{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px}
+.bp{padding:10px 4px;text-align:center;border-radius:12px;background:rgba(0,0,0,.3);cursor:pointer;border:2px solid transparent;filter:grayscale(1);opacity:.5;transition:.2s}
+.bp.on{filter:none;opacity:1;border-color:var(--gold);background:rgba(255,204,51,.15)}
+.bp .em{font-size:28px}.bp .nm{font-size:10px;font-weight:900;margin-top:4px}
+/* CHECKBOXES */
+.chk{appearance:none;width:30px;height:30px;border-radius:9px;border:3px solid #5a46b8;background:#150b3a;display:grid;place-items:center;cursor:pointer;flex-shrink:0;transition:.15s}
+.chk:checked{background:linear-gradient(180deg,var(--green),var(--green2));border-color:var(--green)}
+.chk:checked::after{content:"✓";font-family:'Lilita One';font-size:18px;color:#fff}
+.chk.abs:not(:checked){background:#3a1a2a;border-color:#7a2a3a}
+.rounds{display:flex;gap:6px}
+.rounds label{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:900;color:var(--muted)}
+.pctbar{height:10px;border-radius:999px;background:rgba(0,0,0,.4);overflow:hidden;margin-top:6px}
+.pctbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width .6s}
+.top{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.top:last-child{border:none}
+.top .medal{font-size:24px;width:30px;text-align:center}
+.gift-ph{width:60px;height:60px;border-radius:12px;object-fit:cover;border:2px solid var(--gold);flex-shrink:0}
+.ph-pick{width:100%;aspect-ratio:3/1;border:3px dashed #5a46b8;border-radius:14px;display:grid;place-items:center;cursor:pointer;background:rgba(0,0,0,.2);margin-bottom:10px;overflow:hidden;position:relative}
+.ph-pick img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.ph-pick span{position:relative;z-index:1;font-weight:900;color:var(--muted);background:rgba(0,0,0,.5);padding:6px 12px;border-radius:10px}
+/* MODAL */
+.overlay{position:fixed;inset:0;z-index:50;background:rgba(5,5,25,.78);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.25s}
+.overlay.show{opacity:1;pointer-events:auto}
+.modal{position:relative;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:26px 26px 0 0;padding:20px 18px calc(24px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#3a2690,#1a0f3a);border:3px solid #5a46b8;border-bottom:none;transform:translateY(60px);transition:transform .35s cubic-bezier(.2,1.2,.3,1)}
+.overlay.show .modal{transform:none}
+@media(min-width:600px){.overlay{align-items:center}.modal{border-radius:26px;border-bottom:3px solid #5a46b8}}
+.modal .x{position:absolute;top:12px;right:14px;width:34px;height:34px;border-radius:10px;background:var(--red);box-shadow:0 3px 0 #7a1010;font-family:'Lilita One';font-size:18px;z-index:2}
+#qrbox{display:grid;place-items:center;background:#fff;padding:16px;border-radius:16px;margin:12px auto;width:fit-content}
+#toast{position:fixed;left:50%;top:80px;transform:translate(-50%,-30px);z-index:200;padding:12px 20px;border-radius:14px;font-family:'Lilita One';font-size:17px;background:linear-gradient(180deg,var(--gold),var(--gold2));color:#4a2a00;box-shadow:0 5px 0 var(--gold3),0 10px 20px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:.3s;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.bad{background:linear-gradient(180deg,var(--red),var(--red2));color:#fff;box-shadow:0 5px 0 #7a1010}
+.empty{text-align:center;color:var(--muted);font-weight:800;padding:30px 10px}
+.btngrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.catpct{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.catpct .pill{font-size:10px;padding:2px 7px}
+.attrow{padding:10px 12px}
+.attrow .rounds{gap:5px}
+.attrow .rounds label{font-size:9px}
+.daygrid{width:100%;border-collapse:collapse;font-weight:800;font-size:13px}
+.daygrid th{font-size:10px;color:var(--muted);letter-spacing:1px;padding:6px 4px;text-align:center;position:sticky;top:0}
+.daygrid td{padding:5px 4px;text-align:center;border-top:1px solid rgba(255,255,255,.08)}
+.daygrid td:first-child,.daygrid th:first-child{text-align:left;white-space:nowrap}
+.daygrid .y{color:var(--green)}.daygrid .n{color:rgba(255,255,255,.25)}
+input[type=date].inp{color-scheme:dark}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>SAMUEL EL NABY <small>ADMIN PANEL</small></h1>
+  </header>
+  <main>
+    <!-- SCORE -->
+    <section class="page active" id="p-score">
+      <h2>Coins <span>🪙</span></h2>
+      <div class="card">
+        <label class="lbl">PICK AN AMOUNT</label>
+        <div class="scoregrid">
+          <button class="sbtn plus" onclick="pick(1)">+1</button><button class="sbtn plus" onclick="pick(2)">+2</button><button class="sbtn plus" onclick="pick(3)">+3</button><button class="sbtn plus" onclick="pick(4)">+4</button><button class="sbtn plus" onclick="pick(5)">+5</button>
+          <button class="sbtn minus" onclick="pick(-1)">-1</button><button class="sbtn minus" onclick="pick(-2)">-2</button><button class="sbtn minus" onclick="pick(-3)">-3</button><button class="sbtn minus" onclick="pick(-4)">-4</button><button class="sbtn minus" onclick="pick(-5)">-5</button>
+        </div>
+        <div class="row"><input class="inp" id="customAmt" type="number" placeholder="Custom amount (e.g. 12 or -8)"><button class="btn sm gold" onclick="pickCustom()">Set</button></div>
+        <div class="selected-op" id="opLabel">Pick an amount</div>
+      </div>
+
+      <div class="card">
+        <label class="lbl">MANUAL — PICK A STUDENT</label>
+        <div class="row">
+          <select class="inp" id="manualStudent"></select>
+          <button class="btn green" onclick="applyManual()" id="manualBtn" disabled>Apply</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <label class="lbl">OR SCAN A QR CARD</label>
+        <div id="reader"></div>
+        <button class="btn gold wide" style="margin-top:10px" id="scanBtn" onclick="toggleScan()" disabled>📷 SCAN QR</button>
+      </div>
+      <div id="scanLog"></div>
+    </section>
+
+    <!-- STUDENTS -->
+    <section class="page" id="p-students">
+      <h2>Students <span id="stuCount"></span></h2>
+      <div class="card">
+        <label class="lbl">ADD STUDENT</label>
+        <input class="inp" id="newName" placeholder="Full name (matches image file name)">
+        <label class="lbl">BIRTHDAY 🎂 (optional — can be added later)</label>
+        <div class="row"><input class="inp" id="newBday" type="date"><button class="btn green sm" onclick="addStudent()">Add</button></div>
+        <p class="muted" style="margin-top:8px">Photo must be <b>images/&lt;name&gt;.jpg</b> next to the student site.</p>
+      </div>
+      <div id="stuList"></div>
+    </section>
+
+    <!-- ATTENDANCE -->
+    <section class="page" id="p-att">
+      <h2>Attendance <span>📋</span></h2>
+      <div class="card">
+        <label class="lbl">FRIDAY</label>
+        <select class="inp" id="attDate" onchange="renderAttList()"></select>
+        <label class="lbl">MARK EVERYONE PRESENT IN…</label>
+        <div class="btngrid" id="attAllBtns"></div>
+        <button class="btn gray sm wide" style="margin-top:8px" onclick="clearDay()">Mark everyone absent (all 4)</button>
+        <p class="muted" id="attSummary" style="margin-top:10px"></p>
+      </div>
+      <div id="attList"></div>
+      <div class="card" style="border-color:var(--gold)">
+        <h3 style="font-size:20px;color:var(--gold);margin-bottom:6px">🏅 Top Active Students</h3>
+        <p class="muted" id="attWeeks" style="margin-bottom:6px"></p>
+        <div id="topActive"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:18px;margin-bottom:6px">All students — attendance %</h3>
+        <div id="attPct"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:18px;margin-bottom:4px">📊 Export to Excel</h3>
+        <p class="muted" style="margin-bottom:10px">One file per activity: students, Yes / No for every Friday, and a percentage at the end.</p>
+        <div class="btngrid" id="attExportBtns"></div>
+      </div>
+    </section>
+
+    <!-- SPIRITUALS -->
+    <section class="page" id="p-spirit">
+      <h2>Spirituals <span>🙏</span></h2>
+      <div class="card">
+        <label class="lbl">MONTH</label>
+        <select class="inp" id="spMonth" onchange="renderSpirit()"></select>
+        <p class="muted" id="spSummary"></p>
+      </div>
+      <div id="spList"></div>
+    </section>
+
+    <!-- EFTKAD -->
+    <section class="page" id="p-eft">
+      <h2>Eftkad <span>🏠</span></h2>
+      <p class="muted" style="margin:-6px 0 12px">Tick a round each time you visit the child's home. Comments save when you press 💾.</p>
+      <button class="btn gold wide" style="margin-bottom:14px" onclick="exportEftkad()">📊 Export Eftkad to Excel</button>
+      <div id="eftList"></div>
+    </section>
+
+    <!-- EVENTS -->
+    <section class="page" id="p-news">
+      <h2>Events <span>📅</span></h2>
+      <div class="card">
+        <input class="inp" id="newsTitle" placeholder="Event title">
+        <textarea class="inp" id="newsText" placeholder="Description (date, place, what to bring...)"></textarea>
+        <button class="btn green wide" onclick="addNews()">📢 Publish</button>
+      </div>
+      <div id="newsList"></div>
+    </section>
+
+    <!-- CHALLENGES -->
+    <section class="page" id="p-chal">
+      <h2>Challenges</h2>
+      <div class="card">
+        <input class="inp" id="chTitle" placeholder="Challenge title">
+        <textarea class="inp" id="chDesc" placeholder="Short description" style="min-height:60px"></textarea>
+        <label class="lbl">QUESTIONS (tick the correct answer)</label>
+        <div id="qBuilder"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn gray sm" onclick="addQ()">+ Question</button>
+          <button class="btn green" style="flex:1" onclick="saveChallenge()">⚔️ Save Challenge</button>
+        </div>
+      </div>
+      <div id="chalList"></div>
+    </section>
+
+    <!-- SHOP -->
+    <section class="page" id="p-shop">
+      <h2>Gift <span>Shop</span></h2>
+      <div class="card">
+        <input type="file" id="gFile" accept="image/*" hidden onchange="loadGiftPhoto(this)">
+        <div class="ph-pick" onclick="document.getElementById('gFile').click()"><img id="gPreview" style="display:none"><span id="gPhLabel">📷 Tap to add a photo (optional)</span></div>
+        <div class="row" style="margin-bottom:10px">
+          <input class="inp" id="gEmoji" placeholder="🎁" style="width:70px;text-align:center;font-size:22px">
+          <input class="inp" id="gName" placeholder="Gift name">
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <input class="inp" id="gCost" type="number" placeholder="Cost (Coins)">
+          <input class="inp" id="gQty" type="number" placeholder="Quantity">
+        </div>
+        <button class="btn green wide" onclick="addGift()">🎁 Add Gift</button>
+      </div>
+      <div id="shopList"></div>
+    </section>
+  </main>
+
+  <nav id="nav">
+    <button data-p="score" class="on"><span class="ic">🪙</span>Coins</button>
+    <button data-p="students"><span class="ic">👥</span>Students</button>
+    <button data-p="att"><span class="ic">📋</span>Attend.</button>
+    <button data-p="spirit"><span class="ic">🙏</span>Spirit.</button>
+    <button data-p="eft"><span class="ic">🏠</span>Eftkad</button>
+    <button data-p="news"><span class="ic">📅</span>Events</button>
+    <button data-p="chal"><span class="ic">⚔️</span>Chall.</button>
+    <button data-p="shop"><span class="ic">🎁</span>Shop</button>
+  </nav>
+</div>
+
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   1. CONFIG — same Firebase project as the student file
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCo9k2OLVQprNoCFEjEAHVInOcvS7NlUvo",
+  authDomain: "abrar-100.firebaseapp.com",
+  projectId: "abrar-100",
+  storageBucket: "abrar-100.firebasestorage.app",
+  messagingSenderId: "1031124601739",
+  appId: "1:1031124601739:web:0fbbf88a38d32ffae47d8e",
+  measurementId: "G-YCSYCQ6DV2"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const FV = firebase.firestore.FieldValue;
+const ROOT = db.collection("samuel-el-naby").doc("app");
+const col = n => ROOT.collection(n);
+const IMG_DIR = "images/";
+const COIN = "🪙";
+
+/* Must match the student file */
+const ARENAS = [
+  {name:"Training Camp",min:0,em:"🏕️"},{name:"Bethlehem Stable",min:50,em:"⭐"},{name:"Nazareth Hills",min:100,em:"🌄"},
+  {name:"Galilee Shores",min:150,em:"⛵"},{name:"Jordan River",min:200,em:"🌊"},{name:"Jericho Walls",min:250,em:"🏰"},
+  {name:"Mount Sinai",min:300,em:"⛰️"},{name:"Jerusalem Gates",min:350,em:"🕌"},{name:"Temple Courts",min:400,em:"🏛️"},
+  {name:"Heaven's Arena",min:450,em:"👑"},
+];
+const BADGES = [
+  {id:"first_step",em:"👣",name:"First Step"},{id:"scholar",em:"📖",name:"Scholar"},{id:"perfect",em:"💯",name:"Perfect"},
+  {id:"faithful",em:"🕊️",name:"Faithful"},{id:"early_bird",em:"🐦",name:"Early Bird"},{id:"helper",em:"🤝",name:"Helper"},
+  {id:"memorizer",em:"🧠",name:"Memorizer"},
+];
+/* Fridays: Friday 9 Oct 2026 + 50 more weeks (51 Fridays, last one 24 Sep 2027) */
+const FRIDAYS = Array.from({length:51},(_,i)=>{const d=new Date(2026,9,9);d.setDate(d.getDate()+i*7);return d;});
+/* The 4 things attendance is taken for every Friday.
+   Stored in  attendance/<YYYY-MM-DD> : { odas:{studentId:true}, madares:{…}, dars:{…}, alhan:{…} } */
+const CATS = [
+  {k:"odas",    name:"Odas",         short:"Odas"},
+  {k:"madares", name:"Madares Ahad", short:"Madares"},
+  {k:"dars",    name:"Dars Ketab",   short:"Dars"},
+  {k:"alhan",   name:"Alhan",        short:"Alhan"},
+];
+/* Spirituals — must match the student file */
+const SPIRIT = [
+  {k:"mp",em:"🌅",name:"Morning Prayer"},{k:"np",em:"🌙",name:"Night Prayer"},{k:"bible",em:"📖",name:"Bible"},
+];
+const dkey = d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const dlabel = d=>d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+/* birthday is stored on the student as "YYYY-MM-DD"; cake shows during the whole birthday month */
+const isBdayMonth = s=>!!s.birthday && +String(s.birthday).slice(5,7)===new Date().getMonth()+1;
+const bdayLabel = s=>s.birthday?`${+String(s.birthday).slice(8,10)} ${MONTHS[+String(s.birthday).slice(5,7)-1]}`:"";
+
+/* ============================================================
+   2. STATE / HELPERS
+   ============================================================ */
+let students=[], news=[], challenges=[], shop=[], att={}, spirit={};
+const $ = id=>document.getElementById(id);
+const esc = s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const arenaOf = e=>{let a=ARENAS[0];for(const x of ARENAS)if(e>=x.min)a=x;return a;};
+const avatar = s=>`<div class="av">${esc((s.name||"?")[0])}<img src="${IMG_DIR}${encodeURIComponent(s.name)}.jpg" alt="" onerror="this.remove()"></div>`;
+function toast(m,bad){const t=$("toast");t.textContent=m;t.className=bad?"show bad":"show";clearTimeout(t._t);t._t=setTimeout(()=>t.className="",2200);}
+function openModal(h){$("modal").innerHTML=`<button class="x" onclick="closeModal()">✕</button>`+h;$("overlay").classList.add("show");}
+function closeModal(){$("overlay").classList.remove("show");}
+const slug = n=>n.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+
+/* ============================================================
+   3. LIVE DATA
+   ============================================================ */
+col("students").onSnapshot(s=>{
+  students=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name));
+  renderStudents(); renderAttList(); renderAttStats(); renderSpirit(); renderEftkad(); renderChal(); renderNews();
+});
+col("events").orderBy("createdAt","desc").onSnapshot(s=>{news=s.docs.map(d=>({id:d.id,...d.data()}));renderNews();});
+col("challenges").orderBy("createdAt","desc").onSnapshot(s=>{challenges=s.docs.map(d=>({id:d.id,...d.data()}));renderChal();});
+col("shop").orderBy("cost").onSnapshot(s=>{shop=s.docs.map(d=>({id:d.id,...d.data()}));renderShop();});
+col("attendance").onSnapshot(s=>{att={};s.docs.forEach(d=>att[d.id]=d.data()||{});renderAttList();renderAttStats();});
+col("spirituals").onSnapshot(s=>{spirit={};s.docs.forEach(d=>spirit[d.id]=d.data()||{});renderSpirit();});
+/* fill Friday selector, default = most recent Friday that already happened */
+(function(){
+  const today=dkey(new Date());
+  let def=FRIDAYS[0];
+  for(const d of FRIDAYS) if(dkey(d)<=today) def=d;
+  $("attDate").innerHTML=FRIDAYS.map((d,i)=>`<option value="${dkey(d)}" ${d===def?"selected":""}>Week ${i+1} — ${dlabel(d)}</option>`).join("");
+  $("attAllBtns").innerHTML=CATS.map(c=>`<button class="btn green sm" onclick="markCat('${c.k}')">✓ ${c.name}</button>`).join("");
+  $("attExportBtns").innerHTML=CATS.map(c=>`<button class="btn gold sm" onclick="exportAtt('${c.k}')">⬇ ${c.name}</button>`).join("");
+  /* month selector for Spirituals: Oct 2026 → Sep 2027 (extends if today is later) */
+  const now=new Date(), cur=dkey(now).slice(0,7), ms=[];
+  let d=new Date(2026,9,1); const end=new Date(Math.max(new Date(2027,8,1),new Date(now.getFullYear(),now.getMonth(),1)));
+  while(d<=end){ms.push(dkey(d).slice(0,7));d=new Date(d.getFullYear(),d.getMonth()+1,1);}
+  const sel=ms.includes(cur)?cur:ms[0];
+  $("spMonth").innerHTML=ms.map(m=>`<option value="${m}" ${m===sel?"selected":""}>${MONTHS[+m.slice(5)-1]} ${m.slice(0,4)}</option>`).join("");
+})();
+
+/* ============================================================
+   4. COINS (manual + QR)
+   ============================================================ */
+let op=0, scanner=null, scanning=false, lastScan={id:"",t:0};
+function setOp(n){
+  op=n;
+  document.querySelectorAll(".sbtn").forEach(b=>b.classList.toggle("sel",b.textContent===(n>0?"+":"")+n));
+  const l=$("opLabel"); l.textContent=(n>0?"+":"")+n+" "+COIN; l.className="selected-op "+(n>0?"plus":"minus");
+  $("scanBtn").disabled=false; $("manualBtn").disabled=false;
+}
+function pick(n){ setOp(n); }
+function pickCustom(){ const v=parseInt($("customAmt").value,10); if(!v){toast("Enter a non-zero number",true);return;} setOp(v); }
+function applyManual(){ const id=$("manualStudent").value; if(id) applyScore(id); }
+async function toggleScan(){
+  if(scanning){await stopScan();return;}
+  if(!op){toast("Pick an amount first",true);return;}
+  $("reader").classList.add("on"); $("scanBtn").textContent="⏹ STOP SCANNING";
+  scanner=new Html5Qrcode("reader");
+  try{ await scanner.start({facingMode:"environment"},{fps:10,qrbox:{width:220,height:220}},onScan); scanning=true; }
+  catch(e){ toast("Camera error: "+e,true); $("reader").classList.remove("on"); $("scanBtn").textContent="📷 SCAN QR"; }
+}
+async function stopScan(){ try{await scanner.stop();scanner.clear();}catch(e){} scanning=false; $("reader").classList.remove("on"); $("scanBtn").textContent="📷 SCAN QR"; }
+function onScan(text){
+  const id=text.trim(), now=Date.now();
+  if(lastScan.id===id&&now-lastScan.t<3000) return;
+  lastScan={id,t:now}; applyScore(id);
+}
+async function applyScore(id){
+  const s=students.find(x=>x.id===id);
+  if(!s){toast("Unknown student",true);return;}
+  if(!op){toast("Pick an amount first",true);return;}
+  const ref=col("students").doc(id);
+  try{
+    await db.runTransaction(async t=>{
+      const d=(await t.get(ref)).data();
+      t.update(ref,{coins:Math.max(0,(d.coins||0)+op),earned:Math.max(0,(d.earned||0)+op)});
+    });
+    if(navigator.vibrate) navigator.vibrate(80);
+    toast(`${s.name}: ${op>0?"+":""}${op} ${COIN}`);
+    const log=document.createElement("div"); log.className="log";
+    log.innerHTML=`<b>${esc(s.name)}</b> ${op>0?"+":""}${op} ${COIN} <span class="muted">${new Date().toLocaleTimeString()}</span>`;
+    $("scanLog").prepend(log);
+  }catch(e){toast("Failed: "+e.message,true);}
+}
+
+/* ============================================================
+   5. STUDENTS
+   ============================================================ */
+async function addStudent(){
+  const name=$("newName").value.trim(); if(!name) return;
+  const id=slug(name);
+  if(!id){toast("Name must contain English letters or numbers",true);return;}
+  if((await col("students").doc(id).get()).exists){toast("Student already exists",true);return;}
+  await col("students").doc(id).set({name,coins:0,earned:0,badges:[],done:{},purchases:[],eftkad:[false,false,false,false,false],eftkadNote:"",birthday:$("newBday").value||"",createdAt:Date.now()});
+  $("newName").value=""; $("newBday").value=""; toast("Added "+name+" ✅");
+}
+function renderStudents(){
+  $("stuCount").textContent=`(${students.length})`;
+  $("manualStudent").innerHTML=students.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} — ${s.coins||0} ${COIN}</option>`).join("");
+  if(!students.length){$("stuList").innerHTML=`<div class="empty">No students yet</div>`;return;}
+  $("stuList").innerHTML=students.map((s,i)=>`<div class="card item" onclick="openStudent('${esc(s.id)}')" style="cursor:pointer;animation-delay:${Math.min(i*30,300)}ms">
+    ${avatar(s)}
+    <div class="grow"><h3>${isBdayMonth(s)?"🎂 ":""}${esc(s.name)}</h3><p>${s.birthday?`🎂 ${bdayLabel(s)} • `:""}${arenaOf(s.earned||0).em} ${esc(arenaOf(s.earned||0).name)} • ${(s.badges||[]).length} badges</p></div>
+    <div style="text-align:right"><span class="pill gold">${s.earned||0} ${COIN}</span><p class="muted" style="font-size:11px;margin-top:3px">wallet ${s.coins||0}</p></div></div>`).join("");
+}
+function openStudent(id){
+  const s=students.find(x=>x.id===id); if(!s) return;
+  const b=new Set(s.badges||[]);
+  openModal(`<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${avatar(s)}<div><h2 style="font-size:24px">${esc(s.name)}${isBdayMonth(s)?" 🎂":""}</h2><p class="muted">ID: <b>${esc(s.id)}</b></p></div></div>
+    <label class="lbl">BIRTHDAY 🎂</label><input class="inp" id="edBday" type="date" value="${esc(s.birthday||"")}">
+    <div class="row" style="margin-bottom:10px">
+      <div style="flex:1"><label class="lbl">EARNED (arena)</label><input class="inp" id="edEarned" type="number" value="${s.earned||0}"></div>
+      <div style="flex:1"><label class="lbl">WALLET (spendable)</label><input class="inp" id="edCoins" type="number" value="${s.coins||0}"></div>
+    </div>
+    <label class="lbl">BADGES (tap to toggle)</label>
+    <div class="badgepick" id="badgePick">${BADGES.map(x=>`<div class="bp ${b.has(x.id)?"on":""}" data-id="${x.id}" onclick="this.classList.toggle('on')"><div class="em">${x.em}</div><div class="nm">${esc(x.name)}</div></div>`).join("")}</div>
+    <button class="btn green wide" style="margin-top:12px" onclick="saveStudent('${esc(s.id)}')">💾 Save</button>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn gold" style="flex:1" onclick="showQR('${esc(s.id)}')">🔳 QR Card</button>
+      <button class="btn red sm" onclick="delStudent('${esc(s.id)}')">🗑</button>
+    </div>
+    ${(s.purchases||[]).length?`<label class="lbl" style="margin-top:14px">PURCHASES</label>${s.purchases.slice().reverse().map(p=>`<div class="log">${esc(p.item)} — ${p.cost} ${COIN} <span class="muted">${new Date(p.at).toLocaleDateString()}</span></div>`).join("")}`:""}`);
+}
+async function saveStudent(id){
+  const badges=[...document.querySelectorAll("#badgePick .bp.on")].map(x=>x.dataset.id);
+  await col("students").doc(id).update({earned:+$("edEarned").value||0,coins:+$("edCoins").value||0,badges,birthday:$("edBday").value||""});
+  toast("Saved ✅"); closeModal();
+}
+async function delStudent(id){
+  const s=students.find(x=>x.id===id);
+  if(!confirm(`Delete ${s.name}? This cannot be undone.`)) return;
+  await col("students").doc(id).delete();
+  col("spirituals").doc(id).delete().catch(()=>{});
+  closeModal(); toast("Deleted");
+}
+function showQR(id){
+  const s=students.find(x=>x.id===id);
+  openModal(`<div style="text-align:center"><h2 style="font-size:26px;color:var(--gold)">${esc(s.name)}</h2><p class="muted">Scan to give Coins ${COIN}</p>
+    <div id="qrbox"></div><p class="muted">ID: <b>${esc(s.id)}</b></p>
+    <button class="btn wide" style="margin-top:10px" onclick="downloadQR('${esc(s.name)}')">⬇ Download PNG</button></div>`);
+  new QRCode($("qrbox"),{text:id,width:220,height:220,correctLevel:QRCode.CorrectLevel.H});
+}
+function downloadQR(name){ const c=$("qrbox").querySelector("canvas"); if(!c) return; const a=document.createElement("a"); a.download=`QR-${name}.png`; a.href=c.toDataURL(); a.click(); }
+
+/* ============================================================
+   6. ATTENDANCE (Fridays × Odas / Madares Ahad / Dars Ketab / Alhan)
+   ============================================================ */
+function curDay(){ return $("attDate").value; }
+const attHas = (k,cat,id)=>((att[k]||{})[cat]||{})[id]===true;
+function renderAttList(){
+  const k=curDay(); if(!k) return;
+  $("attSummary").textContent=CATS.map(c=>`${c.name}: ${students.filter(s=>attHas(k,c.k,s.id)).length}`).join(" • ")+` — of ${students.length}`;
+  if(!students.length){$("attList").innerHTML=`<div class="empty">No students yet</div>`;return;}
+  $("attList").innerHTML=students.map(s=>{
+    const n=CATS.filter(c=>attHas(k,c.k,s.id)).length;
+    return `<div class="card item attrow" style="animation:none">
+    ${avatar(s)}<div class="grow"><h3>${esc(s.name)}</h3><p>${n} / ${CATS.length} attended</p></div>
+    <div class="rounds">${CATS.map(c=>`<label>${c.short}<input type="checkbox" class="chk abs" ${attHas(k,c.k,s.id)?"checked":""} onchange="setAtt('${c.k}','${esc(s.id)}',this.checked)"></label>`).join("")}</div></div>`;}).join("");
+}
+async function setAtt(cat,id,val){
+  try{ await col("attendance").doc(curDay()).set({[cat]:{[id]:val}},{merge:true}); }
+  catch(e){ toast("Failed: "+e.message,true); }
+}
+async function markCat(cat){
+  const m={}; students.forEach(s=>m[s.id]=true);
+  await col("attendance").doc(curDay()).set({[cat]:m},{merge:true});
+  toast(`Everyone present in ${CATS.find(c=>c.k===cat).name} ✅`);
+}
+async function clearDay(){
+  if(!confirm("Mark everyone absent in all 4 for this Friday?")) return;
+  const m={}; students.forEach(s=>m[s.id]=false);
+  const data={}; CATS.forEach(c=>data[c.k]=m);
+  await col("attendance").doc(curDay()).set(data,{merge:true});
+  toast("Everyone marked absent");
+}
+const pastFridays = ()=>{const today=dkey(new Date());return FRIDAYS.map(dkey).filter(k=>k<=today);};
+function attStats(){
+  const past=pastFridays(), tot=past.length*CATS.length;
+  return students.map(s=>{
+    const per={}; let n=0;
+    CATS.forEach(c=>{per[c.k]=past.filter(k=>attHas(k,c.k,s.id)).length;n+=per[c.k];});
+    return {s,n,per,weeks:past.length,total:tot,pct:tot?Math.round(n/tot*100):0};
+  }).sort((a,b)=>b.pct-a.pct||b.n-a.n||a.s.name.localeCompare(b.s.name));
+}
+function renderAttStats(){
+  const st=attStats(), weeks=pastFridays().length;
+  $("attWeeks").textContent=`Based on ${weeks} Friday${weeks===1?"":"s"} so far (since 9 Oct 2026) — all 4 activities together`;
+  if(!st.length){$("topActive").innerHTML=$("attPct").innerHTML=`<div class="empty">No students yet</div>`;return;}
+  const medals=["🥇","🥈","🥉","4","5"];
+  $("topActive").innerHTML=st.slice(0,5).map((x,i)=>`<div class="top"><div class="medal">${medals[i]}</div>${avatar(x.s)}<div class="grow"><b>${esc(x.s.name)}</b><div class="pctbar"><i style="width:${x.pct}%"></i></div></div><span class="pill gold">${x.pct}%</span></div>`).join("");
+  $("attPct").innerHTML=st.map(x=>`<div class="top"><div class="grow"><b>${esc(x.s.name)}</b> <span class="muted">${x.n}/${x.total}</span><div class="pctbar"><i style="width:${x.pct}%"></i></div>
+    <div class="catpct">${CATS.map(c=>`<span class="pill">${c.short} ${x.weeks?Math.round(x.per[c.k]/x.weeks*100):0}%</span>`).join("")}</div></div>
+    <span class="pill ${x.pct>=75?"green":x.pct>=50?"gold":"red"}">${x.pct}%</span></div>`).join("");
+}
+
+/* ============================================================
+   6b. EXCEL EXPORT (SheetJS)
+   ============================================================ */
+function saveSheet(rows,sheetName,fileName,widths){
+  if(!window.XLSX){toast("Excel library did not load — check your internet and reload",true);return;}
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"]=widths.map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  XLSX.writeFile(wb,fileName); toast("Downloaded "+fileName+" 📊");
+}
+/* one file per activity: Student | every Friday (Yes/No, blank if that Friday has not come yet) | Attended | Percentage */
+function exportAtt(catKey){
+  const c=CATS.find(x=>x.k===catKey), today=dkey(new Date());
+  if(!students.length){toast("No students yet",true);return;}
+  const head=["Student",...FRIDAYS.map((d,i)=>`W${i+1} — ${dlabel(d)}`),"Attended","Percentage"];
+  const rows=students.map(s=>{
+    let n=0,t=0;
+    const cells=FRIDAYS.map(d=>{const k=dkey(d); if(k>today) return ""; t++; const v=attHas(k,c.k,s.id); if(v)n++; return v?"Yes":"No";});
+    return [s.name,...cells,`${n} / ${t}`,(t?Math.round(n/t*100):0)+"%"];
+  });
+  saveSheet([head,...rows],c.name,`Attendance - ${c.name}.xlsx`,[28,...FRIDAYS.map(()=>18),12,12]);
+}
+function exportEftkad(){
+  if(!students.length){toast("No students yet",true);return;}
+  const head=["Student","Round 1","Round 2","Round 3","Round 4","Round 5","Visits","Comments"];
+  const rows=students.map(s=>{const r=s.eftkad||[];return [s.name,...[0,1,2,3,4].map(i=>r[i]?"Yes":"No"),r.filter(Boolean).length+" / 5",s.eftkadNote||""];});
+  saveSheet([head,...rows],"Eftkad","Eftkad.xlsx",[28,10,10,10,10,10,10,60]);
+}
+
+/* ============================================================
+   6c. SPIRITUALS (read-only view of what students ticked)
+   spirituals/<studentId> : { days:{ "YYYY-MM-DD":{mp,np,bible} }, e3traf:{ "YYYY-MM":true } }
+   ============================================================ */
+/* how many days of month m ("YYYY-MM") have happened so far */
+function daysSoFar(m){
+  const now=new Date(), cur=dkey(now).slice(0,7);
+  if(m>cur) return 0;
+  if(m===cur) return now.getDate();
+  return new Date(+m.slice(0,4),+m.slice(5),0).getDate();
+}
+function spiritOf(s,m){
+  const d=(spirit[s.id]||{}).days||{}, n=daysSoFar(m), c={};
+  SPIRIT.forEach(x=>{c[x.k]=0;for(let i=1;i<=n;i++) if((d[`${m}-${String(i).padStart(2,"0")}`]||{})[x.k]) c[x.k]++;});
+  const sum=SPIRIT.reduce((a,x)=>a+c[x.k],0);
+  return {c,n,e3:((spirit[s.id]||{}).e3traf||{})[m]===true,pct:n?Math.round(sum/(n*SPIRIT.length)*100):0};
+}
+function renderSpirit(){
+  const m=$("spMonth").value; if(!m) return;
+  if(!students.length){$("spSummary").textContent="";$("spList").innerHTML=`<div class="empty">No students yet</div>`;return;}
+  const st=students.map(s=>({s,...spiritOf(s,m)}));
+  const n=daysSoFar(m);
+  $("spSummary").textContent=n?`${n} day${n===1?"":"s"} so far • E3traf done by ${st.filter(x=>x.e3).length} of ${students.length} • tap a student for day-by-day`:"This month has not started yet";
+  $("spList").innerHTML=st.map(x=>`<div class="card" style="animation:none;cursor:pointer" onclick="openSpirit('${esc(x.s.id)}')">
+    <div class="item">${avatar(x.s)}<div class="grow"><h3>${esc(x.s.name)}</h3>
+      <div class="catpct">${SPIRIT.map(y=>`<span class="pill">${y.em} ${x.c[y.k]}/${x.n}</span>`).join("")}<span class="pill ${x.e3?"green":"red"}">✝️ E3traf ${x.e3?"✓":"✗"}</span></div></div>
+      <span class="pill ${x.pct>=75?"green":x.pct>=50?"gold":"red"}">${x.pct}%</span></div>
+    <div class="pctbar"><i style="width:${x.pct}%"></i></div></div>`).join("");
+}
+function openSpirit(id){
+  const s=students.find(x=>x.id===id); if(!s) return;
+  const m=$("spMonth").value, x=spiritOf(s,m), d=(spirit[id]||{}).days||{};
+  const rows=Array.from({length:x.n},(_,i)=>{
+    const k=`${m}-${String(i+1).padStart(2,"0")}`, v=d[k]||{};
+    const wd=new Date(+m.slice(0,4),+m.slice(5)-1,i+1).toLocaleDateString("en-GB",{weekday:"short"});
+    return `<tr><td>${wd} ${i+1}</td>${SPIRIT.map(y=>v[y.k]?`<td class="y">✓</td>`:`<td class="n">—</td>`).join("")}</tr>`;}).join("");
+  openModal(`<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">${avatar(s)}<div><h2 style="font-size:22px">${esc(s.name)}</h2><p class="muted">${MONTHS[+m.slice(5)-1]} ${m.slice(0,4)} • E3traf: <b>${x.e3?"✅ done":"❌ not yet"}</b></p></div></div>
+    <div class="catpct" style="margin-bottom:10px">${SPIRIT.map(y=>`<span class="pill gold">${y.em} ${y.name} ${x.c[y.k]}/${x.n}</span>`).join("")}</div>
+    ${x.n?`<table class="daygrid"><tr><th>DAY</th>${SPIRIT.map(y=>`<th>${y.em} ${y.name.toUpperCase()}</th>`).join("")}</tr>${rows}</table>`:`<div class="empty">This month has not started yet</div>`}`);
+}
+
+/* ============================================================
+   7. EFTKAD (home visits)
+   ============================================================ */
+function renderEftkad(){
+  if(!students.length){$("eftList").innerHTML=`<div class="empty">No students yet</div>`;return;}
+  $("eftList").innerHTML=students.map(s=>{
+    const r=s.eftkad||[false,false,false,false,false];
+    const done=r.filter(Boolean).length;
+    return `<div class="card" style="animation:none">
+      <div class="item" style="margin-bottom:10px">${avatar(s)}<div class="grow"><h3>${esc(s.name)}</h3><p>${done} / 5 visits</p></div>
+        <div class="rounds">${[0,1,2,3,4].map(i=>`<label>R${i+1}<input type="checkbox" class="chk" ${r[i]?"checked":""} onchange="setRound('${esc(s.id)}',${i},this.checked)"></label>`).join("")}</div></div>
+      <div class="row"><textarea class="inp" id="note-${esc(s.id)}" placeholder="Comments about ${esc(s.name)}..." style="min-height:56px">${esc(s.eftkadNote||"")}</textarea>
+        <button class="btn green sm" onclick="saveNote('${esc(s.id)}')">💾</button></div></div>`;}).join("");
+}
+async function setRound(id,i,val){
+  const s=students.find(x=>x.id===id); const r=[...(s.eftkad||[false,false,false,false,false])]; r[i]=val;
+  await col("students").doc(id).update({eftkad:r});
+}
+async function saveNote(id){ await col("students").doc(id).update({eftkadNote:$("note-"+id).value.trim()}); toast("Comment saved ✅"); }
+
+/* ============================================================
+   8. EVENTS
+   ============================================================ */
+async function addNews(){
+  const title=$("newsTitle").value.trim(), text=$("newsText").value.trim();
+  if(!title){toast("Title required",true);return;}
+  await col("events").add({title,text,votes:{},createdAt:Date.now()});
+  $("newsTitle").value=""; $("newsText").value=""; toast("Published 📢");
+}
+function renderNews(){
+  if(!news.length){$("newsList").innerHTML=`<div class="empty">No events yet</div>`;return;}
+  $("newsList").innerHTML=news.map(n=>{
+    const v=Object.values(n.votes||{}); const g=v.filter(x=>x===true).length, no=v.filter(x=>x===false).length;
+    return `<div class="card"><div class="item"><div class="grow"><h3>${esc(n.title)}</h3><p>${esc(n.text)}</p>
+      <div style="margin-top:6px"><span class="pill green">✅ ${g} going</span> <span class="pill red">❌ ${no} not</span></div></div>
+      <button class="btn red sm" onclick="delDoc('events','${n.id}')">🗑</button></div>
+      ${g?`<p class="muted" style="margin-top:8px">Going: ${Object.entries(n.votes).filter(([k,v])=>v).map(([k])=>esc((students.find(s=>s.id===k)||{}).name||k)).join(", ")}</p>`:""}</div>`;}).join("");
+}
+async function delDoc(c,id){ if(!confirm("Delete this?")) return; await col(c).doc(id).delete(); toast("Deleted"); }
+
+/* ============================================================
+   9. CHALLENGES
+   ============================================================ */
+let qCount=0;
+function addQ(){
+  qCount++; const n=qCount;
+  const d=document.createElement("div"); d.className="qb";
+  d.innerHTML=`<div class="row" style="margin-bottom:8px"><input class="inp q" placeholder="Question ${n}"><button class="btn red sm" onclick="this.closest('.qb').remove()">✕</button></div>
+    <div class="opts">${[0,1,2,3].map(i=>`<div class="opt"><input type="radio" name="ans${n}" value="${i}" ${i===0?"checked":""}><input class="inp o" placeholder="Option ${String.fromCharCode(65+i)}"></div>`).join("")}</div>`;
+  $("qBuilder").appendChild(d);
+}
+async function saveChallenge(){
+  const title=$("chTitle").value.trim(), desc=$("chDesc").value.trim();
+  if(!title){toast("Title required",true);return;}
+  const questions=[];
+  for(const qb of document.querySelectorAll("#qBuilder .qb")){
+    const q=qb.querySelector(".q").value.trim(); if(!q) continue;
+    const options=[...qb.querySelectorAll(".o")].map(x=>x.value.trim()).filter(Boolean);
+    if(options.length<2){toast("Each question needs at least 2 options",true);return;}
+    const answer=+qb.querySelector("input[type=radio]:checked").value;
+    if(answer>=options.length){toast("Correct answer must be a filled option",true);return;}
+    questions.push({q,options,answer});
+  }
+  if(!questions.length){toast("Add at least one question",true);return;}
+  await col("challenges").add({title,desc,questions,createdAt:Date.now()});
+  $("chTitle").value=""; $("chDesc").value=""; $("qBuilder").innerHTML=""; qCount=0; addQ(); addQ();
+  toast("Challenge saved ⚔️");
+}
+function renderChal(){
+  if(!challenges.length){$("chalList").innerHTML=`<div class="empty">No challenges yet</div>`;return;}
+  $("chalList").innerHTML=challenges.map(c=>{
+    const done=students.filter(s=>(s.done||{})[c.id]).length;
+    return `<div class="card item"><div class="grow"><h3>${esc(c.title)}</h3><p>${esc(c.desc)}</p>
+      <div style="margin-top:6px"><span class="pill">${(c.questions||[]).length} questions</span> <span class="pill gold">${done} completed</span></div></div>
+      <button class="btn red sm" onclick="delDoc('challenges','${c.id}')">🗑</button></div>`;}).join("");
+}
+
+/* ============================================================
+   10. SHOP (with photo upload → stored as a small JPEG data URL)
+   ============================================================ */
+let giftPhoto="";
+function loadGiftPhoto(input){
+  const f=input.files[0]; if(!f) return;
+  const img=new Image(); const url=URL.createObjectURL(f);
+  img.onload=()=>{
+    const S=320, c=document.createElement("canvas"); c.width=c.height=S;
+    const ctx=c.getContext("2d"); const m=Math.min(img.width,img.height);
+    ctx.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,S,S);   // center-crop square
+    giftPhoto=c.toDataURL("image/jpeg",.8); URL.revokeObjectURL(url);
+    $("gPreview").src=giftPhoto; $("gPreview").style.display="block"; $("gPhLabel").textContent="📷 Change photo";
+  };
+  img.src=url;
+}
+async function addGift(){
+  const name=$("gName").value.trim(), emoji=$("gEmoji").value.trim()||"🎁", cost=+$("gCost").value, qty=+$("gQty").value;
+  if(!name||!cost||!qty){toast("Fill name, cost and quantity",true);return;}
+  await col("shop").add({name,emoji,cost,qty,photo:giftPhoto,createdAt:Date.now()});
+  ["gName","gEmoji","gCost","gQty","gFile"].forEach(i=>$(i).value="");
+  giftPhoto=""; $("gPreview").style.display="none"; $("gPhLabel").textContent="📷 Tap to add a photo (optional)";
+  toast("Gift added 🎁");
+}
+function renderShop(){
+  if(!shop.length){$("shopList").innerHTML=`<div class="empty">Shop is empty</div>`;return;}
+  $("shopList").innerHTML=shop.map(g=>`<div class="card item">
+    ${g.photo?`<img class="gift-ph" src="${g.photo}" alt="">`:`<div style="font-size:34px;width:60px;text-align:center">${esc(g.emoji||"🎁")}</div>`}
+    <div class="grow"><h3>${esc(g.name)}</h3><p>${g.cost} ${COIN} each</p></div>
+    <div class="row"><button class="btn gray sm" onclick="qty('${g.id}',-1)">−</button><span class="pill gold" style="min-width:40px;justify-content:center">${g.qty}</span><button class="btn gray sm" onclick="qty('${g.id}',1)">+</button></div>
+    <button class="btn red sm" onclick="delDoc('shop','${g.id}')">🗑</button></div>`).join("");
+}
+async function qty(id,d){ await col("shop").doc(id).update({qty:FV.increment(d)}); }
+
+/* ============================================================
+   11. NAV
+   ============================================================ */
+$("nav").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="p-"+b.dataset.p));
+  if(b.dataset.p!=="score"&&scanning) stopScan();
+});
+addQ(); addQ();   // two empty question slots in the challenge builder
+</script>
+</body>
+</html>
