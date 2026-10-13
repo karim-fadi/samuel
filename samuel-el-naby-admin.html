@@ -116,8 +116,10 @@ label.lbl{display:block;font-size:11px;font-weight:900;color:var(--muted);letter
 .catpct{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .catpct .pill{font-size:10px;padding:2px 7px}
 .attrow{padding:10px 12px}
-.attrow .rounds{gap:5px}
-.attrow .rounds label{font-size:9px}
+.attrow .av{width:36px;height:36px;font-size:17px;border-radius:10px}
+.attchecks{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)}
+.attchecks label{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:900;color:var(--muted);cursor:pointer}
+.btngrid>:last-child:nth-child(odd){grid-column:1/-1}
 .daygrid{width:100%;border-collapse:collapse;font-weight:800;font-size:13px}
 .daygrid th{font-size:10px;color:var(--muted);letter-spacing:1px;padding:6px 4px;text-align:center;position:sticky;top:0}
 .daygrid td{padding:5px 4px;text-align:center;border-top:1px solid rgba(255,255,255,.08)}
@@ -169,7 +171,7 @@ input[type=date].inp{color-scheme:dark}
         <input class="inp" id="newName" placeholder="Full name (matches image file name)">
         <label class="lbl">BIRTHDAY 🎂 (optional — can be added later)</label>
         <div class="row"><input class="inp" id="newBday" type="date"><button class="btn green sm" onclick="addStudent()">Add</button></div>
-        <p class="muted" style="margin-top:8px">Photo must be <b>images/&lt;name&gt;.jpg</b> next to the student site.</p>
+        <p class="muted" style="margin-top:8px">Photo must be <b>images/&lt;name&gt;.jpeg</b> next to the student site.</p>
       </div>
       <div id="stuList"></div>
     </section>
@@ -182,7 +184,7 @@ input[type=date].inp{color-scheme:dark}
         <select class="inp" id="attDate" onchange="renderAttList()"></select>
         <label class="lbl">MARK EVERYONE PRESENT IN…</label>
         <div class="btngrid" id="attAllBtns"></div>
-        <button class="btn gray sm wide" style="margin-top:8px" onclick="clearDay()">Mark everyone absent (all 4)</button>
+        <button class="btn gray sm wide" style="margin-top:8px" onclick="clearDay()">Mark everyone absent (all 5)</button>
         <p class="muted" id="attSummary" style="margin-top:10px"></p>
       </div>
       <div id="attList"></div>
@@ -317,20 +319,24 @@ const BADGES = [
   {id:"faithful",em:"🕊️",name:"Faithful"},{id:"early_bird",em:"🐦",name:"Early Bird"},{id:"helper",em:"🤝",name:"Helper"},
   {id:"memorizer",em:"🧠",name:"Memorizer"},
 ];
-/* Fridays: Friday 9 Oct 2026 + 50 more weeks (51 Fridays, last one 24 Sep 2027) */
-const FRIDAYS = Array.from({length:51},(_,i)=>{const d=new Date(2026,9,9);d.setDate(d.getDate()+i*7);return d;});
-/* The 4 things attendance is taken for every Friday.
-   Stored in  attendance/<YYYY-MM-DD> : { odas:{studentId:true}, madares:{…}, dars:{…}, alhan:{…} } */
+/* Fridays: 25 Sep 2026 and 2 Oct 2026, then Friday 9 Oct 2026 + 50 more weeks (53 Fridays, last one 24 Sep 2027) */
+const FRIDAYS = Array.from({length:53},(_,i)=>{const d=new Date(2026,8,25);d.setDate(d.getDate()+i*7);return d;});
+/* The 5 things attendance is taken for every Friday.
+   Stored in  attendance/<YYYY-MM-DD> : { odas:{studentId:true}, madares:{…}, dars:{…}, alhan:{…}, tasbeha:{…} } */
 const CATS = [
   {k:"odas",    name:"Odas",         short:"Odas"},
   {k:"madares", name:"Madares Ahad", short:"Madares"},
   {k:"dars",    name:"Dars Ketab",   short:"Dars"},
   {k:"alhan",   name:"Alhan",        short:"Alhan"},
+  {k:"tasbeha", name:"Tasbeha",      short:"Tasbeha"},
 ];
 /* Spirituals — must match the student file */
 const SPIRIT = [
-  {k:"mp",em:"🌅",name:"Morning Prayer"},{k:"np",em:"🌙",name:"Night Prayer"},{k:"bible",em:"📖",name:"Bible"},
+  {k:"mp",em:"🌅",name:"Morning Prayer",short:"Morning"},{k:"np",em:"🌙",name:"Night Prayer",short:"Night"},{k:"bible",em:"📖",name:"Bible",short:"Bible"},
+  {k:"som",em:"🌾",name:"Som",short:"Som",days:[3,5]},   // only Wednesdays (3) and Fridays (5)
 ];
+/* does spiritual item x apply on day k ("YYYY-MM-DD")? */
+const spApplies = (x,k)=>!x.days||x.days.includes(new Date(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8,10)).getDay());
 const dkey = d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const dlabel = d=>d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -345,7 +351,7 @@ let students=[], news=[], challenges=[], shop=[], att={}, spirit={};
 const $ = id=>document.getElementById(id);
 const esc = s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const arenaOf = e=>{let a=ARENAS[0];for(const x of ARENAS)if(e>=x.min)a=x;return a;};
-const avatar = s=>`<div class="av">${esc((s.name||"?")[0])}<img src="${IMG_DIR}${encodeURIComponent(s.name)}.jpg" alt="" onerror="this.remove()"></div>`;
+const avatar = s=>`<div class="av">${esc((s.name||"?")[0])}<img src="${IMG_DIR}${encodeURIComponent(s.name)}.jpeg" alt="" onerror="this.remove()"></div>`;
 function toast(m,bad){const t=$("toast");t.textContent=m;t.className=bad?"show bad":"show";clearTimeout(t._t);t._t=setTimeout(()=>t.className="",2200);}
 function openModal(h){$("modal").innerHTML=`<button class="x" onclick="closeModal()">✕</button>`+h;$("overlay").classList.add("show");}
 function closeModal(){$("overlay").classList.remove("show");}
@@ -484,7 +490,7 @@ function showQR(id){
 function downloadQR(name){ const c=$("qrbox").querySelector("canvas"); if(!c) return; const a=document.createElement("a"); a.download=`QR-${name}.png`; a.href=c.toDataURL(); a.click(); }
 
 /* ============================================================
-   6. ATTENDANCE (Fridays × Odas / Madares Ahad / Dars Ketab / Alhan)
+   6. ATTENDANCE (Fridays × Odas / Madares Ahad / Dars Ketab / Alhan / Tasbeha)
    ============================================================ */
 function curDay(){ return $("attDate").value; }
 const attHas = (k,cat,id)=>((att[k]||{})[cat]||{})[id]===true;
@@ -494,9 +500,9 @@ function renderAttList(){
   if(!students.length){$("attList").innerHTML=`<div class="empty">No students yet</div>`;return;}
   $("attList").innerHTML=students.map(s=>{
     const n=CATS.filter(c=>attHas(k,c.k,s.id)).length;
-    return `<div class="card item attrow" style="animation:none">
-    ${avatar(s)}<div class="grow"><h3>${esc(s.name)}</h3><p>${n} / ${CATS.length} attended</p></div>
-    <div class="rounds">${CATS.map(c=>`<label>${c.short}<input type="checkbox" class="chk abs" ${attHas(k,c.k,s.id)?"checked":""} onchange="setAtt('${c.k}','${esc(s.id)}',this.checked)"></label>`).join("")}</div></div>`;}).join("");
+    return `<div class="card attrow" style="animation:none">
+    <div class="item">${avatar(s)}<div class="grow"><h3>${esc(s.name)}</h3></div><span class="pill ${n===CATS.length?"green":n?"gold":""}">${n} / ${CATS.length}</span></div>
+    <div class="attchecks">${CATS.map(c=>`<label>${c.short}<input type="checkbox" class="chk abs" ${attHas(k,c.k,s.id)?"checked":""} onchange="setAtt('${c.k}','${esc(s.id)}',this.checked)"></label>`).join("")}</div></div>`;}).join("");
 }
 async function setAtt(cat,id,val){
   try{ await col("attendance").doc(curDay()).set({[cat]:{[id]:val}},{merge:true}); }
@@ -508,7 +514,7 @@ async function markCat(cat){
   toast(`Everyone present in ${CATS.find(c=>c.k===cat).name} ✅`);
 }
 async function clearDay(){
-  if(!confirm("Mark everyone absent in all 4 for this Friday?")) return;
+  if(!confirm(`Mark everyone absent in all ${CATS.length} for this Friday?`)) return;
   const m={}; students.forEach(s=>m[s.id]=false);
   const data={}; CATS.forEach(c=>data[c.k]=m);
   await col("attendance").doc(curDay()).set(data,{merge:true});
@@ -525,7 +531,7 @@ function attStats(){
 }
 function renderAttStats(){
   const st=attStats(), weeks=pastFridays().length;
-  $("attWeeks").textContent=`Based on ${weeks} Friday${weeks===1?"":"s"} so far (since 9 Oct 2026) — all 4 activities together`;
+  $("attWeeks").textContent=`Based on ${weeks} Friday${weeks===1?"":"s"} so far (since 25 Sep 2026) — all ${CATS.length} activities together`;
   if(!st.length){$("topActive").innerHTML=$("attPct").innerHTML=`<div class="empty">No students yet</div>`;return;}
   const medals=["🥇","🥈","🥉","4","5"];
   $("topActive").innerHTML=st.slice(0,5).map((x,i)=>`<div class="top"><div class="medal">${medals[i]}</div>${avatar(x.s)}<div class="grow"><b>${esc(x.s.name)}</b><div class="pctbar"><i style="width:${x.pct}%"></i></div></div><span class="pill gold">${x.pct}%</span></div>`).join("");
@@ -565,7 +571,8 @@ function exportEftkad(){
 
 /* ============================================================
    6c. SPIRITUALS (read-only view of what students ticked)
-   spirituals/<studentId> : { days:{ "YYYY-MM-DD":{mp,np,bible} }, e3traf:{ "YYYY-MM":true } }
+   spirituals/<studentId> : { days:{ "YYYY-MM-DD":{mp,np,bible,som} }, e3traf:{ "YYYY-MM":true } }
+   Som is counted only on Wednesdays and Fridays.
    ============================================================ */
 /* how many days of month m ("YYYY-MM") have happened so far */
 function daysSoFar(m){
@@ -575,20 +582,20 @@ function daysSoFar(m){
   return new Date(+m.slice(0,4),+m.slice(5),0).getDate();
 }
 function spiritOf(s,m){
-  const d=(spirit[s.id]||{}).days||{}, n=daysSoFar(m), c={};
-  SPIRIT.forEach(x=>{c[x.k]=0;for(let i=1;i<=n;i++) if((d[`${m}-${String(i).padStart(2,"0")}`]||{})[x.k]) c[x.k]++;});
-  const sum=SPIRIT.reduce((a,x)=>a+c[x.k],0);
-  return {c,n,e3:((spirit[s.id]||{}).e3traf||{})[m]===true,pct:n?Math.round(sum/(n*SPIRIT.length)*100):0};
+  const d=(spirit[s.id]||{}).days||{}, n=daysSoFar(m), c={}, t={};   // c = ticked, t = days it applied
+  SPIRIT.forEach(x=>{c[x.k]=t[x.k]=0;for(let i=1;i<=n;i++){const k=`${m}-${String(i).padStart(2,"0")}`; if(!spApplies(x,k)) continue; t[x.k]++; if((d[k]||{})[x.k]) c[x.k]++;}});
+  const sum=SPIRIT.reduce((a,x)=>a+c[x.k],0), tot=SPIRIT.reduce((a,x)=>a+t[x.k],0);
+  return {c,t,n,e3:((spirit[s.id]||{}).e3traf||{})[m]===true,pct:tot?Math.round(sum/tot*100):0};
 }
 function renderSpirit(){
   const m=$("spMonth").value; if(!m) return;
   if(!students.length){$("spSummary").textContent="";$("spList").innerHTML=`<div class="empty">No students yet</div>`;return;}
   const st=students.map(s=>({s,...spiritOf(s,m)}));
   const n=daysSoFar(m);
-  $("spSummary").textContent=n?`${n} day${n===1?"":"s"} so far • E3traf done by ${st.filter(x=>x.e3).length} of ${students.length} • tap a student for day-by-day`:"This month has not started yet";
+  $("spSummary").textContent=n?`${n} day${n===1?"":"s"} so far • E3traf done by ${st.filter(x=>x.e3).length} of ${students.length} • Som counts Wed & Fri only • tap a student for day-by-day`:"This month has not started yet";
   $("spList").innerHTML=st.map(x=>`<div class="card" style="animation:none;cursor:pointer" onclick="openSpirit('${esc(x.s.id)}')">
     <div class="item">${avatar(x.s)}<div class="grow"><h3>${esc(x.s.name)}</h3>
-      <div class="catpct">${SPIRIT.map(y=>`<span class="pill">${y.em} ${x.c[y.k]}/${x.n}</span>`).join("")}<span class="pill ${x.e3?"green":"red"}">✝️ E3traf ${x.e3?"✓":"✗"}</span></div></div>
+      <div class="catpct">${SPIRIT.map(y=>`<span class="pill">${y.em} ${x.c[y.k]}/${x.t[y.k]}</span>`).join("")}<span class="pill ${x.e3?"green":"red"}">✝️ E3traf ${x.e3?"✓":"✗"}</span></div></div>
       <span class="pill ${x.pct>=75?"green":x.pct>=50?"gold":"red"}">${x.pct}%</span></div>
     <div class="pctbar"><i style="width:${x.pct}%"></i></div></div>`).join("");
 }
@@ -598,10 +605,10 @@ function openSpirit(id){
   const rows=Array.from({length:x.n},(_,i)=>{
     const k=`${m}-${String(i+1).padStart(2,"0")}`, v=d[k]||{};
     const wd=new Date(+m.slice(0,4),+m.slice(5)-1,i+1).toLocaleDateString("en-GB",{weekday:"short"});
-    return `<tr><td>${wd} ${i+1}</td>${SPIRIT.map(y=>v[y.k]?`<td class="y">✓</td>`:`<td class="n">—</td>`).join("")}</tr>`;}).join("");
+    return `<tr><td>${wd} ${i+1}</td>${SPIRIT.map(y=>!spApplies(y,k)?`<td></td>`:v[y.k]?`<td class="y">✓</td>`:`<td class="n">—</td>`).join("")}</tr>`;}).join("");
   openModal(`<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">${avatar(s)}<div><h2 style="font-size:22px">${esc(s.name)}</h2><p class="muted">${MONTHS[+m.slice(5)-1]} ${m.slice(0,4)} • E3traf: <b>${x.e3?"✅ done":"❌ not yet"}</b></p></div></div>
-    <div class="catpct" style="margin-bottom:10px">${SPIRIT.map(y=>`<span class="pill gold">${y.em} ${y.name} ${x.c[y.k]}/${x.n}</span>`).join("")}</div>
-    ${x.n?`<table class="daygrid"><tr><th>DAY</th>${SPIRIT.map(y=>`<th>${y.em} ${y.name.toUpperCase()}</th>`).join("")}</tr>${rows}</table>`:`<div class="empty">This month has not started yet</div>`}`);
+    <div class="catpct" style="margin-bottom:10px">${SPIRIT.map(y=>`<span class="pill gold">${y.em} ${y.name} ${x.c[y.k]}/${x.t[y.k]}</span>`).join("")}</div>
+    ${x.n?`<table class="daygrid"><tr><th>DAY</th>${SPIRIT.map(y=>`<th>${y.em}<br>${y.short.toUpperCase()}</th>`).join("")}</tr>${rows}</table>`:`<div class="empty">This month has not started yet</div>`}`);
 }
 
 /* ============================================================

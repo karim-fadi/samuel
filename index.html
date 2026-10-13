@@ -164,15 +164,21 @@ input.inp:focus{border-color:var(--gold)}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:.7}}
 .coins{color:var(--gold);font-weight:900}
 /* BIRTHDAY */
-.scard .cake{position:absolute;top:6px;left:6px;z-index:3;font-size:26px;filter:drop-shadow(0 3px 0 rgba(0,0,0,.4));animation:bob 2s ease-in-out infinite}
+.scard .cake{position:absolute;bottom:6px;right:8px;z-index:3;font-size:26px;filter:drop-shadow(0 3px 0 rgba(0,0,0,.4));animation:bob 2s ease-in-out infinite}
 .scard.bday{border-color:#ff6bb5}
+/* RANK NUMBER */
+.scard .rk{position:absolute;top:8px;left:8px;z-index:3;font-family:'Lilita One';font-size:15px;line-height:1;padding:5px 9px;border-radius:10px;background:rgba(8,16,44,.82);border:2px solid #3a5fc4;box-shadow:0 3px 0 var(--border)}
+.scard .rk.top{font-size:17px;color:#4a2a00;border-color:#fff3;box-shadow:0 3px 0 rgba(0,0,0,.45)}
+.scard .rk.r1{background:linear-gradient(180deg,#ffe066,#ffb300)}
+.scard .rk.r2{background:linear-gradient(180deg,#f2f5fa,#aab4c4)}
+.scard .rk.r3{background:linear-gradient(180deg,#f0b27a,#c2743a)}
 /* SPIRITUALS */
 .daystrip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
 .daybtn{padding:8px 2px;border-radius:14px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:2px solid #2d4da3;box-shadow:0 4px 0 var(--border);text-align:center;font-weight:900;transition:.15s}
 .daybtn .wd{font-size:10px;color:var(--muted);letter-spacing:.5px}
 .daybtn .dn{font-family:'Lilita One';font-size:20px;line-height:1.1}
-.daybtn .dots{display:flex;gap:3px;justify-content:center;margin-top:4px}
-.daybtn .dots i{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.45)}
+.daybtn .dots{display:flex;gap:2px;justify-content:center;margin-top:4px}
+.daybtn .dots i{width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,.45)}
 .daybtn .dots i.on{background:var(--green);box-shadow:0 0 6px var(--green)}
 .daybtn.sel{border-color:var(--gold);background:linear-gradient(180deg,#26449a,#1b3270);transform:translateY(-3px)}
 .daybtn.sel .dn{color:var(--gold)}
@@ -188,7 +194,7 @@ input.inp:focus{border-color:var(--gold)}
 .sprow.e3.on{border-color:var(--gold);background:rgba(255,204,51,.14)}
 .sprow.e3.on .box{background:linear-gradient(180deg,var(--gold),var(--gold2));border-color:var(--gold);color:#4a2a00}
 .spstat{display:flex;align-items:center;gap:10px;margin-top:10px;font-weight:900;font-size:13px}
-.spstat .lb{width:132px;flex-shrink:0;white-space:nowrap}
+.spstat .lb{width:138px;flex-shrink:0;white-space:nowrap}
 .spstat .progress{flex:1;margin-top:0;height:14px}
 .spstat .ct{width:44px;text-align:right;color:var(--gold);flex-shrink:0}
 </style>
@@ -343,12 +349,17 @@ const BADGES = [
    ============================================================ */
 let me=null, students=[], news=[], challenges=[], shop=[];
 /* Spirituals — stored in  spirituals/<studentId> :
-   { days:{ "2026-10-09":{mp:true,np:true,bible:true} }, e3traf:{ "2026-10":true } }   (must match admin file) */
+   { days:{ "2026-10-09":{mp:true,np:true,bible:true,som:true} }, e3traf:{ "2026-10":true } }   (must match admin file)
+   "days" on an item = weekdays it applies to (0=Sun … 3=Wed … 5=Fri); no "days" = every day */
 const SPIRIT = [
   {k:"mp",    em:"🌅", name:"Morning Prayer", sub:"Start the day with God"},
   {k:"np",    em:"🌙", name:"Night Prayer",   sub:"Thank God before you sleep"},
   {k:"bible", em:"📖", name:"Bible",          sub:"Read your Bible today"},
+  {k:"som",   em:"🌾", name:"Som",            sub:"Fasting day — Wednesday & Friday", days:[3,5]},
 ];
+const kdate = k=>new Date(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8,10));
+/* the items that apply on day k ("YYYY-MM-DD") — Som only on Wednesdays and Fridays */
+const spFor = k=>{const wd=kdate(k).getDay();return SPIRIT.filter(x=>!x.days||x.days.includes(wd));};
 let spirit={days:{},e3traf:{}}, spDay=null;
 const dkey = d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const mkey = d=>dkey(d).slice(0,7);
@@ -357,7 +368,7 @@ const isBdayMonth = s=>!!s.birthday && +String(s.birthday).slice(5,7)===new Date
 const $ = id=>document.getElementById(id);
 const esc = s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 /* letter sits BEHIND the photo; shows only if the photo is missing */
-const imgOf = s=>`<div class="init">${esc((s.name||"?")[0].toUpperCase())}</div><img src="${IMG_DIR}${encodeURIComponent(s.name)}.jpg" alt="" onerror="this.style.display='none'">`;
+const imgOf = s=>`<div class="init">${esc((s.name||"?")[0].toUpperCase())}</div><img src="${IMG_DIR}${encodeURIComponent(s.name)}.jpeg" alt="" onerror="this.style.display='none'">`;
 const arenaOf = e=>{let a=ARENAS[0];for(const x of ARENAS)if(e>=x.min)a=x;return a;};
 const nextArena = e=>ARENAS.find(x=>x.min>e)||null;
 function toast(m,bad){const t=$("toast");t.textContent=m;t.className=bad?"show bad":"show";clearTimeout(t._t);t._t=setTimeout(()=>t.className="",2200);}
@@ -389,7 +400,8 @@ function startApp(id){
   col("students").onSnapshot(s=>{
     students=s.docs.map(d=>({id:d.id,...d.data()}));
     students.forEach(x=>{x.earned=x.earned||0;x.coins=x.coins||0;x.badges=x.badges||[];x.done=x.done||{};});
-    students.sort((a,b)=>a.name.localeCompare(b.name));   // alphabetical — no ranking shown
+    students.sort((a,b)=>b.earned-a.earned||a.name.localeCompare(b.name));   // ranked by Coins earned
+    students.forEach((x,i)=>{x.rank=i&&students[i-1].earned===x.earned?students[i-1].rank:i+1;});   // equal Coins = same rank
     me=students.find(x=>x.id===id);
     if(!me){localStorage.removeItem("sen_id");location.reload();return;}
     renderMe();renderRank();renderArena();renderBadges();renderShop();renderChal();renderNews();
@@ -407,15 +419,15 @@ function startApp(id){
    ============================================================ */
 function renderMe(){
   $("meName").textContent=me.name; $("meCoins").textContent=me.coins;
-  $("meImg").src=IMG_DIR+encodeURIComponent(me.name)+".jpg";
+  $("meImg").src=IMG_DIR+encodeURIComponent(me.name)+".jpeg";
   $("shopBal").textContent=me.coins+" "+COIN;
 }
 function renderRank(){
   $("rankCount").textContent=students.length+" players";
   $("rankGrid").innerHTML=students.map((s,i)=>`
     <div class="card scard ${s.id===me.id?"me":""} ${isBdayMonth(s)?"bday":""}" style="animation-delay:${Math.min(i*40,400)}ms" onclick="openStudent('${esc(s.id)}')">
-      ${isBdayMonth(s)?`<div class="cake" title="Birthday this month!">🎂</div>`:""}
-      <div class="img">${imgOf(s)}</div>
+      <div class="rk ${s.rank<=3?"top r"+s.rank:""}">${s.rank<=3?["🥇","🥈","🥉"][s.rank-1]+" ":""}#${s.rank}</div>
+      <div class="img">${imgOf(s)}${isBdayMonth(s)?`<div class="cake" title="Birthday this month!">🎂</div>`:""}</div>
       <div class="info">
         <div class="nm">${esc(s.name)}</div>
         <div class="ar">${arenaOf(s.earned).em} ${esc(arenaOf(s.earned).name)}</div>
@@ -430,7 +442,7 @@ function openStudent(id){
   openModal(`<div class="detail">
     <div class="big">${imgOf(s)}</div>
     <h2>${esc(s.name)}${isBdayMonth(s)?" 🎂":""}</h2>
-    <div class="sub">${a.em} ${esc(a.name)}${isBdayMonth(s)?" • Birthday this month! 🎉":""}</div>
+    <div class="sub">Rank #${s.rank} • ${a.em} ${esc(a.name)}${isBdayMonth(s)?" • Birthday this month! 🎉":""}</div>
     <div class="stats">
       <div class="stat"><b>${s.earned}</b><span>COINS EARNED ${COIN}</span></div>
       <div class="stat"><b>${s.coins}</b><span>WALLET ${COIN}</span></div>
@@ -500,7 +512,7 @@ function renderShop(){
 }
 
 /* ============================================================
-   6b. SPIRITUALS (daily: Morning Prayer / Night Prayer / Bible — monthly: E3traf)
+   6b. SPIRITUALS (daily: Morning Prayer / Night Prayer / Bible — Wed & Fri: Som — monthly: E3traf)
    ============================================================ */
 function renderSpirit(){
   if(!me) return;
@@ -515,10 +527,10 @@ function renderSpirit(){
     return `<button class="daybtn ${k===spDay?"sel":""}" onclick="pickSpDay('${k}')">
       <div class="wd">${k===today?"TODAY":d.toLocaleDateString("en-GB",{weekday:"short"}).toUpperCase()}</div>
       <div class="dn">${d.getDate()}</div>
-      <div class="dots">${SPIRIT.map(x=>`<i class="${v[x.k]?"on":""}"></i>`).join("")}</div></button>`;}).join("");
+      <div class="dots">${spFor(k).map(x=>`<i class="${v[x.k]?"on":""}"></i>`).join("")}</div></button>`;}).join("");
   const sel=days.find(d=>dkey(d)===spDay)||now, v=spirit.days[spDay]||{};
   $("spDayLbl").textContent=(spDay===today?"TODAY — ":"")+sel.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}).toUpperCase();
-  $("spChecks").innerHTML=SPIRIT.map(x=>`<button class="sprow ${v[x.k]?"on":""}" onclick="toggleSpirit('${x.k}')">
+  $("spChecks").innerHTML=spFor(spDay).map(x=>`<button class="sprow ${v[x.k]?"on":""}" onclick="toggleSpirit('${x.k}')">
     <span class="em">${x.em}</span><span class="tx"><b>${x.name}</b><span>${x.sub}</span></span><span class="box">${v[x.k]?"✓":""}</span></button>`).join("");
   const mk=mkey(now), e3=spirit.e3traf[mk]===true;
   $("spMonthLbl").textContent="THIS MONTH — "+now.toLocaleDateString("en-GB",{month:"long",year:"numeric"}).toUpperCase();
@@ -526,16 +538,21 @@ function renderSpirit(){
     <span class="em">✝️</span><span class="tx"><b>E3traf</b><span>${e3?"Done this month — well done!":"Tick when you have done it this month"}</span></span><span class="box">${e3?"✓":""}</span></button>`;
   const n=now.getDate();
   $("spStats").innerHTML=SPIRIT.map(x=>{
-    let c=0; for(let i=1;i<=n;i++) if((spirit.days[`${mk}-${String(i).padStart(2,"0")}`]||{})[x.k]) c++;
-    return `<div class="spstat"><span class="lb">${x.em} ${x.name}</span><div class="progress"><i style="width:${c/n*100}%"></i></div><span class="ct">${c}/${n}</span></div>`;}).join("");
+    let c=0,t=0;
+    for(let i=1;i<=n;i++){
+      const k=`${mk}-${String(i).padStart(2,"0")}`;
+      if(x.days&&!x.days.includes(kdate(k).getDay())) continue;   // Som counts only Wednesdays & Fridays
+      t++; if((spirit.days[k]||{})[x.k]) c++;
+    }
+    return `<div class="spstat"><span class="lb">${x.em} ${x.name}${x.days?" (Wed & Fri)":""}</span><div class="progress"><i style="width:${t?c/t*100:0}%"></i></div><span class="ct">${c}/${t}</span></div>`;}).join("");
 }
 function pickSpDay(k){ spDay=k; renderSpirit(); }
 async function toggleSpirit(k){
   const cur=spirit.days[spDay]||{}, val=!cur[k];
-  const allDone=val&&SPIRIT.every(x=>x.k===k||cur[x.k]);
+  const allDone=val&&spFor(spDay).every(x=>x.k===k||cur[x.k]);
   try{
     const p=col("spirituals").doc(me.id).set({days:{[spDay]:{[k]:val}}},{merge:true});
-    if(allDone){confetti();toast("All three done! 🙏🎉");}
+    if(allDone){confetti();toast("All done for the day! 🙏🎉");}
     await p;
   }catch(e){toast("Could not save. Check your connection.",true);}
 }
